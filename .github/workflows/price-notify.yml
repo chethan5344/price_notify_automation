@@ -2,8 +2,13 @@ name: Price Notify
 
 on:
   schedule:
-    - cron: '0 9,17 * * *'
+    # Runs at 9:00 AM and 5:00 PM IST (3:30 AM and 11:30 AM UTC)
+    - cron: '30 3,11 * * *'
   workflow_dispatch:
+
+# Required so the action can push the updated json back to the repo
+permissions:
+  contents: write
 
 jobs:
   scrape-and-notify:
@@ -27,9 +32,9 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: npm start
 
-      - name: Upload cache artifact
-        uses: actions/upload-artifact@v4
+      - name: Commit and push cache
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          name: price-cache
-          path: cache/prices.json
-          if-no-files-found: ignore
+          commit_message: "chore: update prices cache"
+          file_pattern: cache/prices.json
+          
