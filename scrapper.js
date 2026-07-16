@@ -1,21 +1,41 @@
-const cheerio = require('cheerio');
 const fs = require('fs');
 const path = require('path');
 
-const TARGET_URL = 'https://www.bangalorerefinery.com/pages/todays-rates';
+// Appending a dynamic timestamp forces the CDN to serve the absolute newest file
+const TARGET_URL = `https://www.bangalorerefinery.com/cdn/shop/files/rates.txt?v=${Date.now()}`;
 const CACHE_FILE = path.join(__dirname, 'cache', 'prices.json');
 
 function normalizePrice(value) {
+  if (!value) return 'N/A';
   return value.replace(/\s+/g, ' ').trim();
 }
 
-function parsePrices(html) {
-  const $ = cheerio.load(html);
+function parsePrices(rawData) {
+  // Clean up their custom formatting wrapper so it parses as standard JSON array of arrays
+  const cleanJsonString = rawData.replace(/\]\]/g, ']]').replace(/\]\[/g, '],[');
+  
+  let ratesArray = [];
+  try {
+    ratesArray = JSON.parse(cleanJsonString);
+  } catch (error) {
+    console.error('Failed to parse the rates text file. Format may have changed.', error.message);
+    return { gold: 'N/A', platinum: 'N/A', silver1kg: 'N/A', silver250g: 'N/A' };
+  }
+
+  // Helper function to strip all spacing and casing for bulletproof matching
+  const cleanKey = (str) => str.toLowerCase().replace(/\s+/g, '');
+
+  const getPrice = (targetKeyFragment) => {
+    const cleanedTarget = cleanKey(targetKeyFragment);
+    const item = ratesArray.find(row => row[0] && cleanKey(row[0]).includes(cleanedTarget));
+    return item ? normalizePrice(item[1]) : 'N/A';
+  };
+
   return {
-    gold: normalizePrice($('td:contains("24K (9999) 10 g GoldBar")').next().text()),
-    platinum: normalizePrice($('td:contains("999 Platinum 10g Bar")').next().text()),
-    silver1kg: normalizePrice($('td:contains("Silver 1 kg Bar")').next().text()),
-    silver250g: normalizePrice($('td:contains("Silver 250 g")').next().text()),
+    gold: getPrice("24K(9999)10gGoldBar"),
+    platinum: getPrice("999Platinum10gBar"),
+    silver1kg: getPrice("Silver1kgBar"),
+    silver250g: getPrice("999SilverBar250gm"), 
   };
 }
 
@@ -27,10 +47,10 @@ function buildNotificationMessage(prices) {
   return [
     '📊 Bangalore Refinery Rates Updated:',
     '',
-    `🔸 Gold 24K (10g): ${prices.gold}`,
-    `🔹 Platinum (10g): ${prices.platinum}`,
-    `🪙 Silver (1kg): ${prices.silver1kg}`,
-    `🪙 Silver (250g): ${prices.silver250g}`,
+    `🔸 Gold 24K (10g): ₹${prices.gold}`,
+    `🔹 Platinum (10g): ₹${prices.platinum}`,
+    `🪙 Silver (1kg): ₹${prices.silver1kg}`,
+    `🪙 Silver (250g): ₹${prices.silver250g}`,
   ].join('\n');
 }
 
@@ -77,11 +97,11 @@ async function scrapeAndNotify() {
   try {
     const response = await fetch(TARGET_URL);
     if (!response.ok) {
-      throw new Error(`Failed to fetch rates page: ${response.status}`);
+      throw new Error(`Failed to fetch rates data: ${response.status}`);
     }
 
-    const html = await response.text();
-    const prices = parsePrices(html);
+    const rawData = await response.text();
+    const prices = parsePrices(rawData);
     const previousPrices = loadCachedPrices();
 
     if (!hasChanged(previousPrices, prices)) {
