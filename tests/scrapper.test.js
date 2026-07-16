@@ -12,17 +12,10 @@ test('normalizePrice trims and collapses whitespace', () => {
   assert.equal(normalizePrice('  ₹ 1,200   '), '₹ 1,200');
 });
 
-test('parsePrices extracts the tracked values from HTML', () => {
-  const html = `
-    <table>
-      <tr><td>24K (9999) 10 g GoldBar</td><td>₹ 3,500</td></tr>
-      <tr><td>999 Platinum 10g Bar</td><td>₹ 1,200</td></tr>
-      <tr><td>Silver 1 kg Bar</td><td>₹ 95,000</td></tr>
-      <tr><td>Silver 250 g</td><td>₹ 24,500</td></tr>
-    </table>
-  `;
+test('parsePrices extracts the tracked values from the rates text payload', () => {
+  const rawData = `[["24K (9999) 10g Gold Bar","₹ 3,500"],["999 Platinum 10g Bar","₹ 1,200"],["Silver 1kg Bar","₹ 95,000"],["999 Silver Bar 250gm","₹ 24,500"]]`;
 
-  const parsed = parsePrices(html);
+  const parsed = parsePrices(rawData);
   assert.deepEqual(parsed, {
     gold: '₹ 3,500',
     platinum: '₹ 1,200',
@@ -57,6 +50,6 @@ test('buildNotificationMessage formats a Telegram message', () => {
     silver250g: '₹ 24,500',
   });
 
-  assert.match(message, /Gold 24K \(10g\): ₹ 3,500/);
-  assert.match(message, /Silver \(250g\): ₹ 24,500/);
+  assert.match(message, /Gold 24K \(10g\): ₹3,500/);
+  assert.match(message, /Silver \(250g\): ₹24,500/);
 });

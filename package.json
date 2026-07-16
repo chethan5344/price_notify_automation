@@ -6,8 +6,5 @@
   "scripts": {
     "start": "node scrapper.js",
     "test": "node --test"
-  },
-  "dependencies": {
-    "cheerio": "^1.0.3"
   }
 }

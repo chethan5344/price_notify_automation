@@ -44,13 +44,27 @@ function hasChanged(previousPrices, newPrices) {
 }
 
 function buildNotificationMessage(prices) {
+  const formatPrice = (value) => {
+    const cleanedValue = normalizePrice(value ?? '').replace(/^₹\s*/, '');
+    if (cleanedValue === 'N/A') return 'N/A';
+
+    const numericValue = Number(cleanedValue.replace(/,/g, ''));
+    if (Number.isNaN(numericValue)) return cleanedValue;
+
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(numericValue);
+  };
+
   return [
     '📊 Bangalore Refinery Rates Updated:',
     '',
-    `🔸 Gold 24K (10g): ₹${prices.gold}`,
-    `🔹 Platinum (10g): ₹${prices.platinum}`,
-    `🪙 Silver (1kg): ₹${prices.silver1kg}`,
-    `🪙 Silver (250g): ₹${prices.silver250g}`,
+    `🔸 Gold 24K (10g): ${formatPrice(prices.gold)}`,
+    `🔹 Platinum (10g): ${formatPrice(prices.platinum)}`,
+    `🪙 Silver (1kg): ${formatPrice(prices.silver1kg)}`,
+    `🪙 Silver (250g): ${formatPrice(prices.silver250g)}`,
   ].join('\n');
 }
 
